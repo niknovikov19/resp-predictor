@@ -28,11 +28,11 @@ class RateController(ABC):
 
     def __init__(
             self,
-            r0: np.ndarray | float,
-            taum: np.ndarray | float,
-            ks: np.ndarray | float,
-            tauu: np.ndarray | float,
-            ku: np.ndarray | float
+            r0: np.ndarray | float,      # target rate
+            taum: np.ndarray | float,    # slow error integration time constant      
+            ks: np.ndarray | float,      # slow correction sensitivity
+            tauu: np.ndarray | float,    # dynamic highpass correction time const.
+            ku: np.ndarray | float       # dynamic highpass correction sensitivity
             ):
         self.par = {'r0': r0, 'taum': taum, 'ks': ks, 'tauu': tauu, 'ku': ku}
         self.nvars = 1 if np.isscalar(r0) else len(r0)
@@ -96,12 +96,12 @@ class RateController(ABC):
             self.par[k] for k in ('r0', 'taum', 'ks', 'ku', 'tauu'))
         
         # Update the state
-        e = r - r0
-        m += (e - m) * self.dt / taum
-        q = e - m
-        s += -ks * self.phi(m) * self.dt
-        u += (-u - ku * q) * self.dt / tauu
-        z = s + u
+        e = r - r0                              # online error
+        m += (e - m) * self.dt / taum           # slow mean error
+        q = e - m                               # fast error residual
+        s += -ks * self.phi(m) * self.dt        # slow correction (const after locking)
+        u += (-u - ku * q) * self.dt / tauu     # dynamic high-pass correction (zero after locking)
+        z = s + u                               # total correction
 
         # Store the state
         self.state = {'m': m, 's': s, 'u': u, 'e': e, 'q': q, 'z': z}
