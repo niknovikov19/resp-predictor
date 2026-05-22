@@ -124,7 +124,7 @@ def make_W_h0_ei_2d(model, r0, tau, f, tau_decay, q_ie=1, phi_ie=0, tol=1e-12):
         raise ValueError("f must be nonnegative")
 
     mu0 = np.asarray(model.gain_inv(r0), dtype=float).reshape(2, 1)
-    gp = np.asarray(model.gain_deriv(mu0), dtype=float).ravel()
+    gp = np.asarray(model.gain_deriv(r0), dtype=float).ravel()
 
     if gp.size != 2:
         raise ValueError("gain_deriv must return length 2")
