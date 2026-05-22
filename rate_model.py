@@ -40,6 +40,22 @@ class RateModel(ABC):
              ) -> np.ndarray | float:
         pass
 
+    @abstractmethod
+    def gain_inv(self,
+             r: np.ndarray | float,
+             pop_num: int | None = None,
+             eps: float = 1e-9
+             ) -> np.ndarray | float:
+        pass
+
+    @abstractmethod
+    def gain_deriv(self,
+             mu: np.ndarray | float,
+             pop_num: int | None = None
+             ) -> np.ndarray | float:
+        """Derivative of the gain function with respect to mu."""
+        pass
+
     def _run_full(self,
             h: np.ndarray,   # input: (npops, 1 | nsteps)
             r0: np.ndarray,   # initial state: (npops, 1)
