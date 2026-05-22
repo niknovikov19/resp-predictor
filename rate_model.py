@@ -19,19 +19,56 @@ class RateModel(ABC):
     npops: int
     W: np.ndarray   # (npops, npops)
     tau: np.ndarray   # (npops, 1)
+    tau_syn: np.ndarray   # (npops, npops)
 
     sim_res_type: Literal['full', 'final']
 
     def __init__(
             self,
             W: np.ndarray,   # (npops, npops)
-            tau: np.ndarray | float   # (npops, 1)
+            tau: np.ndarray | float,   # (npops, 1)
+            tau_syn: np.ndarray | float = 0.0   # (npops, npops)
             ):
         # TODO: checks
         self.W = W
         self.npops = W.shape[0]
         self.tau = _to_array(tau, (self.npops, 1))
+        self.tau_syn = _to_array(tau_syn, (self.npops, self.npops))
         self.sim_res_type = 'full'
+
+    def _init_syn(self, r: np.ndarray) -> np.ndarray:
+        s = np.zeros((self.npops, self.npops))
+        is_dyn = self.tau_syn > 0
+        if np.any(is_dyn):
+            s_hat = self.W * r.T
+            s[is_dyn] = s_hat[is_dyn]
+        return s
+    
+    def _calc_mu(
+            self,
+            r: np.ndarray,
+            h: np.ndarray,
+            s: np.ndarray
+            ) -> np.ndarray:
+        mu = h + s.sum(axis=1, keepdims=True)
+        is_inst = (self.tau_syn == 0)
+        if np.any(is_inst):
+            mu = mu + (self.W * is_inst) @ r
+        return mu
+    
+    def _step_syn(
+            self,
+            s: np.ndarray,
+            r: np.ndarray,
+            dt: float
+            ) -> np.ndarray:
+        is_dyn = self.tau_syn > 0
+        if np.any(is_dyn):
+            s_hat = self.W * r.T
+            s[is_dyn] += (
+                (s_hat[is_dyn] - s[is_dyn]) * dt / self.tau_syn[is_dyn]
+            )
+        return s
     
     @abstractmethod
     def gain(self,
@@ -74,6 +111,7 @@ class RateModel(ABC):
 
         # Initial state
         R[:, [0]] = r0
+        s = self._init_syn(r0)
 
         # Iterate to find the steady state
         for n in range(1, nsteps):
@@ -81,8 +119,9 @@ class RateModel(ABC):
             h_ = h if is_h_const else h[:, [n]]
             if fb_proc is not None:
                 h_ = h_ + fb_proc(r)
-            r_hat = self.gain(self.W @ r + h_)
+            r_hat = self.gain(self._calc_mu(r, h_, s))
             R[:, [n]] = r + (r_hat - r) * dt / self.tau
+            s = self._step_syn(s, r, dt)
         
         # Convert the result to xarray
         R = xr.DataArray(
@@ -104,13 +143,15 @@ class RateModel(ABC):
 
         # Initial state
         r = r0.copy()
+        s = self._init_syn(r0)
 
         # Iterate to find the steady state
         for n in range(1, nsteps):
             h_ = h if is_h_const else h[:, [n]]
             if fb_proc is not None:
                 h_ = h_ + fb_proc(r)
-            r_hat = self.gain(self.W @ r + h_)
+            r_hat = self.gain(self._calc_mu(r, h_, s))
+            s = self._step_syn(s, r, dt)
             r += (r_hat - r) * dt / self.tau
         
         return r
@@ -153,14 +194,28 @@ class RateModel(ABC):
         # Initial state
         R[0] = r0[pop_num]
 
-        # Steady-state
-        r_hat = self.gain(
-            self.W[pop_num, :] @ r0 + h, pop_num)
+        # Synaptic state
+        s = np.zeros(self.npops)
+        is_dyn = self.tau_syn[pop_num, :] > 0
+        if np.any(is_dyn):
+            s_hat = self.W[pop_num, :] * r0[:, 0]
+            s[is_dyn] = s_hat[is_dyn]
 
+        # Steady-state
         # Iterate to find the steady state
         for n in range(1, nsteps):
             r = R[n - 1]
+            mu = h + s.sum()
+            if np.any(~is_dyn):
+                mu += self.W[pop_num, ~is_dyn] @ r0[~is_dyn, 0]
+            r_hat = self.gain(mu, pop_num)
             R[n] = r + (r_hat - r) * dt / self.tau[pop_num]
+            if np.any(is_dyn):
+                s_hat = self.W[pop_num, :] * r0[:, 0]
+                s[is_dyn] += (
+                    (s_hat[is_dyn] - s[is_dyn])
+                    * dt / self.tau_syn[pop_num, is_dyn]
+                )
         
         # Convert the result to xarray
         R = xr.DataArray(
@@ -180,9 +235,28 @@ class RateModel(ABC):
             ) -> float:
         # Return steady-state
         r0 = r0.reshape((self.npops, 1))
-        r_hat = self.gain(
-            float(self.W[pop_num, :] @ r0 + h), pop_num)
-        return r_hat
+        if np.all(self.tau_syn[pop_num, :] == 0):
+            r_hat = self.gain(
+                float(self.W[pop_num, :] @ r0 + h), pop_num)
+            return r_hat
+
+        r = float(r0[pop_num, 0])
+        s = np.zeros(self.npops)
+        is_dyn = self.tau_syn[pop_num, :] > 0
+        s_hat = self.W[pop_num, :] * r0[:, 0]
+        s[is_dyn] = s_hat[is_dyn]
+
+        for n in range(1, nsteps):
+            mu = h + s.sum()
+            if np.any(~is_dyn):
+                mu += self.W[pop_num, ~is_dyn] @ r0[~is_dyn, 0]
+            r_hat = self.gain(mu, pop_num)
+            r += (r_hat - r) * dt / self.tau[pop_num]
+            s[is_dyn] += (
+                (s_hat[is_dyn] - s[is_dyn])
+                * dt / self.tau_syn[pop_num, is_dyn]
+            )
+        return r
     
     def run_1pop(
             self,
@@ -213,9 +287,10 @@ class RateModelWC(RateModel):
             tau: np.ndarray | float,
             rmax: np.ndarray | float,
             gain_slope: np.ndarray | float,
-            gain_center: np.ndarray | float
+            gain_center: np.ndarray | float,
+            tau_syn: np.ndarray | float = 0.0
             ):
-        super().__init__(W, tau)
+        super().__init__(W, tau, tau_syn)
         self.rmax = _to_array(rmax, (self.npops, 1))
         self.gain_slope = _to_array(gain_slope, (self.npops, 1))
         self.gain_center = _to_array(gain_center, (self.npops, 1))
@@ -273,7 +348,8 @@ class RateModelWC(RateModel):
             gain_slope: np.ndarray | float,
             gain_center: np.ndarray | float,
             R: float,
-            J0: float = -1.0
+            J0: float = -1.0,
+            tau_syn: np.ndarray | float = 0.0
             ) -> tuple['RateModelWC', np.ndarray, np.ndarray]:
         """Build a Wilson-Cowan model with a prescribed steady state.
 
@@ -288,6 +364,7 @@ class RateModelWC(RateModel):
         model = cls(
             np.zeros((npops, npops)),
             tau=tau,
+            tau_syn=tau_syn,
             rmax=rmax,
             gain_slope=gain_slope,
             gain_center=gain_center

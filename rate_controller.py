@@ -25,6 +25,8 @@ class RateController(ABC):
 
     state: dict[str, np.ndarray]
     step_num: int | None
+    activate_t: float
+    lock_t: float | None
 
     def __init__(
             self,
@@ -40,6 +42,8 @@ class RateController(ABC):
                     for k, v in self.par.items()}
         self.sim_res_type = 'full'
         self.step_num = None
+        self.activate_t = 0.0
+        self.lock_t = None
 
     @abstractmethod
     def phi(self, m: np.ndarray, ) -> np.ndarray:
@@ -51,11 +55,15 @@ class RateController(ABC):
               m0: np.ndarray | float = 0.0,
               s0: np.ndarray | float = 0.0,
               u0: np.ndarray | float = 0.0,
+              activate_t: float = 0.0,
+              lock_t: float | None = None,
               sim_res_type: Literal['full', 'final'] = 'full'
               ):
         # Params
         self.dt = dt
         self.nsteps = nsteps
+        self.activate_t = activate_t
+        self.lock_t = lock_t
         self.sim_res_type = sim_res_type
 
         # State
@@ -92,16 +100,32 @@ class RateController(ABC):
 
         e, m, q, s, u, z = (
             self.state[k] for k in ('e', 'm', 'q', 's', 'u', 'z'))
+        t = self.tvec[self.step_num]
         r0, taum, ks, ku, tauu = (
             self.par[k] for k in ('r0', 'taum', 'ks', 'ku', 'tauu'))
+        is_active = t >= self.activate_t
+        is_locked = (
+            self.lock_t is not None and t >= self.lock_t
+        )
         
         # Update the state
-        e = r - r0                              # online error
-        m += (e - m) * self.dt / taum           # slow mean error
-        q = e - m                               # fast error residual
-        s += -ks * self.phi(m) * self.dt        # slow correction (const after locking)
-        u += (-u - ku * q) * self.dt / tauu     # dynamic high-pass correction (zero after locking)
-        z = s + u                               # total correction
+        if is_active:
+            e = r - r0                              # online error
+            m += (e - m) * self.dt / taum           # slow mean error
+            q = e - m                               # fast error residual
+            if not is_locked:
+                s += -ks * self.phi(m) * self.dt    # slow correction until locking
+                u += (-u - ku * q) * self.dt / tauu # dynamic high-pass correction until locking
+            else:
+                u[:] = 0.0
+            z = s + u                               # total correction
+        else:
+            e[:] = 0.0
+            q[:] = 0.0
+            m[:] = 0.0
+            s[:] = 0.0
+            u[:] = 0.0
+            z[:] = 0.0
 
         # Store the state
         self.state = {'m': m, 's': s, 'u': u, 'e': e, 'q': q, 'z': z}
