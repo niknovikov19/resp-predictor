@@ -1,2 +1,5 @@
 *.pyc
 *.vscode
+*.npz
+_old
+dev_scratch/artifacts/**/*.png

@@ -1,0 +1,36 @@
+{
+  "phaseproc": {
+    "drop_win": 0.01,
+    "drop_win_sweep": [
+      0.0,
+      0.002,
+      0.004,
+      0.006,
+      0.008,
+      0.01,
+      0.015,
+      0.02
+    ],
+    "exclude_edges": true,
+    "f": 10,
+    "fit_intercept": true,
+    "method": "fit",
+    "min_valid_mass_frac": 0.0,
+    "n_cycles": 5,
+    "phase_progression_plot": "wrapped_strip",
+    "pop": 0,
+    "rcond": null,
+    "signal": "raw"
+  },
+  "sigproc": {
+    "bp_f": [
+      5.0,
+      20.0
+    ],
+    "bp_order": 4,
+    "epoch_t_win": [
+      -0.05,
+      0.05
+    ]
+  }
+}

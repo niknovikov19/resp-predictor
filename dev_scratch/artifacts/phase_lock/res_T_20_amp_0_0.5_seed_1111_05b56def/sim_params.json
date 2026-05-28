@@ -1,0 +1,32 @@
+{
+  "eigmode": {
+    "f": 10,
+    "phi_ie": 0.8,
+    "q_ie": 1,
+    "tau_decay": 0.7
+  },
+  "model": {
+    "r0": [
+      5,
+      5
+    ],
+    "sigma_h": 0.01,
+    "tau": 0,
+    "taue_syn": 0.025,
+    "taui_syn": 0.05
+  },
+  "pulse": {
+    "pulse_amp_e": 0,
+    "pulse_amp_i": 0.5,
+    "pulse_f": 10,
+    "pulse_t0": 0.5,
+    "pulse_w": 0.005
+  },
+  "sim": {
+    "T": 20,
+    "dre_start": 1,
+    "dt": 0.0005,
+    "phase_start": -1.5707963267948966,
+    "seed": 1111
+  }
+}
