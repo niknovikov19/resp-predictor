@@ -3,3 +3,4 @@
 *.npz
 _old
 dev_scratch/artifacts/**/*.png
+.mplconfig

@@ -1,0 +1,22 @@
+{
+  "artifact_dir": "/home/nnovikov/repo/resp_predictor/dev_scratch/artifacts/rate_model_ker",
+  "figures": {
+    "dynamic_synapse": "/home/nnovikov/repo/resp_predictor/dev_scratch/artifacts/rate_model_ker/dynamic_synapse.png",
+    "full_vs_final": "/home/nnovikov/repo/resp_predictor/dev_scratch/artifacts/rate_model_ker/full_vs_final.png",
+    "run_1pop_consistency": "/home/nnovikov/repo/resp_predictor/dev_scratch/artifacts/rate_model_ker/run_1pop_consistency.png"
+  },
+  "metrics": {
+    "dynamic_synapse": {
+      "s0_transient_shift": -0.7102984839375965,
+      "steady_state_diff": 4.750185287427655e-05
+    },
+    "full_vs_final": {
+      "max_diff_feedback": 0.0,
+      "max_diff_plain": 0.0
+    },
+    "run_1pop": {
+      "equivalent_full_vs_1pop_diff": 0.0,
+      "onepop_full_vs_final_diff": 0.0
+    }
+  }
+}

@@ -92,6 +92,25 @@ def _validate_power_mode(power_mode):
         raise ValueError("power_mode must be one of: 'coherent', 'noise', 'amp2'")
     return aliases[key]
 
+def _validate_freq_grid(f0, fband, df):
+    """Validate and build the frequency grid. """
+    if not np.isfinite(f0) or f0 <= 0:
+        raise ValueError('f0 must be positive and finite')
+    if not np.isfinite(fband) or fband < 0:
+        raise ValueError('fband must be finite and non-negative')
+    if not np.isfinite(df) or df <= 0:
+        raise ValueError('df must be positive and finite')
+
+    f_min = f0 - fband
+    f_max = f0 + fband
+    if f_min <= 0:
+        raise ValueError('f0 - fband must be positive')
+
+    ff = np.arange(f_min, f_max + 0.5 * df, df, dtype=float)
+    if ff.size == 0:
+        raise ValueError('frequency grid is empty')
+    return ff
+
 def _validate_drop_win(drop_win):
     """Validate the optional exclusion window. """
     if drop_win is None:
@@ -107,6 +126,18 @@ def _validate_drop_win(drop_win):
     if t_pre > t_post:
         raise ValueError('drop_win must satisfy t_pre <= t_post')
     return t_pre, t_post
+
+def _build_eval_centers(t, dt_sample, f_ref, n_cycles, overlap):
+    """Build shared evaluation centers for sliding power. """
+    if not np.isfinite(overlap) or overlap < 0.0 or overlap > 1.0:
+        raise ValueError('overlap must be finite and lie in [0, 1]')
+
+    _, _, full_support_samples = _morlet_support_params(dt_sample, f_ref, n_cycles)
+    step_samples = max(1, int(round(full_support_samples * (1.0 - overlap))))
+    idx_eval = np.arange(0, t.size, step_samples, dtype=int)
+    if idx_eval[-1] != t.size - 1:
+        idx_eval = np.append(idx_eval, t.size - 1)
+    return t[idx_eval].copy()
 
 def _validate_fit_options(t0, fit_intercept, exclude_edges, min_valid_mass_frac):
     """Validate fit-specific options. """
@@ -274,20 +305,13 @@ def morlet_power(
 ):
     """Compute sliding Morlet power. """
     x, t, dt_sample = _validate_wavelet_inputs(x, t, f, n_cycles)
-    if not np.isfinite(overlap) or overlap < 0.0 or overlap > 1.0:
-        raise ValueError('overlap must be finite and lie in [0, 1]')
 
     # Build the sparse center grid
     power_mode = _validate_power_mode(power_mode)
     _validate_min_valid_mass_frac(min_valid_mass_frac)
-    _, _, full_support_samples = _morlet_support_params(dt_sample, f, n_cycles)
-    step_samples = max(1, int(round(full_support_samples * (1.0 - overlap))))
-    idx_eval = np.arange(0, t.size, step_samples, dtype=int)
-    if idx_eval[-1] != t.size - 1:
-        idx_eval = np.append(idx_eval, t.size - 1)
+    t_power = _build_eval_centers(t, dt_sample, f, n_cycles, overlap)
 
     # Evaluate local power at each center
-    t_power = t[idx_eval].copy()
     power = np.full(t_power.shape, np.nan, dtype=float)
     for i, t0 in enumerate(t_power):
         power[i] = morlet_power_local(
@@ -296,6 +320,32 @@ def morlet_power(
             min_valid_mass_frac=min_valid_mass_frac,
         )
     return t_power, power
+
+
+def morlet_power_freqs(
+    x, t, f0, fband, df, n_cycles, overlap=1.0,
+    power_mode='coherent',
+    subtract_local_mean=False, exclude_edges=False,
+    min_valid_mass_frac=0
+):
+    """Compute sliding Morlet power over a frequency grid. """
+    x, t, dt_sample = _validate_wavelet_inputs(x, t, f0, n_cycles)
+    ff = _validate_freq_grid(f0, fband, df)
+    power_mode = _validate_power_mode(power_mode)
+    _validate_min_valid_mass_frac(min_valid_mass_frac)
+
+    # Build one shared center grid from the lowest frequency support
+    t_power = _build_eval_centers(t, dt_sample, np.min(ff), n_cycles, overlap)
+    power = np.full((ff.size, t_power.size), np.nan, dtype=float)
+    for j, f in enumerate(ff):
+        for i, t0 in enumerate(t_power):
+            power[j, i] = morlet_power_local(
+                x, t, t0, f, n_cycles, power_mode=power_mode,
+                subtract_local_mean=subtract_local_mean,
+                exclude_edges=exclude_edges,
+                min_valid_mass_frac=min_valid_mass_frac,
+            )
+    return t_power, ff, power
 
 
 def itc(
@@ -466,18 +516,10 @@ def sinusoid_fit_power(
 ):
     """Compute sliding fitted oscillatory power. """
     x, t, dt_sample = _validate_wavelet_inputs(x, t, f, n_cycles)
-    if not np.isfinite(overlap) or overlap < 0.0 or overlap > 1.0:
-        raise ValueError('overlap must be finite and lie in [0, 1]')
-
     # Build the sparse center grid
-    _, _, full_support_samples = _morlet_support_params(dt_sample, f, n_cycles)
-    step_samples = max(1, int(round(full_support_samples * (1.0 - overlap))))
-    idx_eval = np.arange(0, t.size, step_samples, dtype=int)
-    if idx_eval[-1] != t.size - 1:
-        idx_eval = np.append(idx_eval, t.size - 1)
+    t_power = _build_eval_centers(t, dt_sample, f, n_cycles, overlap)
 
     # Evaluate the local fit at each center
-    t_power = t[idx_eval].copy()
     power = np.full(t_power.shape, np.nan, dtype=float)
     for i, t0 in enumerate(t_power):
         power[i] = sinusoid_fit_power_local(
@@ -486,6 +528,30 @@ def sinusoid_fit_power(
             min_valid_mass_frac=min_valid_mass_frac, rcond=rcond
         )
     return t_power, power
+
+
+def sinusoid_fit_power_freqs(
+    x, t, f0, fband, df, n_cycles, overlap=1.0, *,
+    fit_intercept=True, exclude_edges=True,
+    min_valid_mass_frac=0, rcond=None
+):
+    """Compute sliding fitted power over a frequency grid. """
+    x, t, dt_sample = _validate_wavelet_inputs(x, t, f0, n_cycles)
+    ff = _validate_freq_grid(f0, fband, df)
+
+    # Build one shared center grid from the lowest frequency support
+    t_power = _build_eval_centers(t, dt_sample, np.min(ff), n_cycles, overlap)
+    power = np.full((ff.size, t_power.size), np.nan, dtype=float)
+    for j, f in enumerate(ff):
+        for i, t0 in enumerate(t_power):
+            power[j, i] = sinusoid_fit_power_local(
+                x, t, t0, f, n_cycles,
+                fit_intercept=fit_intercept,
+                exclude_edges=exclude_edges,
+                min_valid_mass_frac=min_valid_mass_frac,
+                rcond=rcond,
+            )
+    return t_power, ff, power
 
 
 def sinusoid_fit_itc(

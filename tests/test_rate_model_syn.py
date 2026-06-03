@@ -399,6 +399,63 @@ class TestRateModelSyn(unittest.TestCase):
 
         self.assertAlmostEqual(r_alt, r, places=12)
 
+    def test_run_1pop_accepts_time_varying_h(self):
+        model = RateModelWC(
+            np.array([[0.0, 0.0], [0.0, 0.0]]),
+            tau=np.array([[1.0], [1.0]]),
+            rmax=10.0,
+            gain_slope=1.0,
+            gain_center=0.0,
+        )
+        h = np.array([0.1, 0.2, 0.4, 0.3, 0.5])
+        r0 = np.array([[0.0], [0.0]])
+
+        rr = model.run_1pop(0, h, r0, dt=0.5, nsteps=h.size)
+
+        self.assertEqual(rr.dims, ('pop', 'time'))
+        self.assertEqual(rr.shape, (1, h.size))
+        self.assertTrue(np.all(np.isfinite(rr.values)))
+
+    def test_dynamic_r0_drives_open_loop_self_row(self):
+        model = RateModelWC(
+            np.array([[1.5]]),
+            tau=0.0,
+            rmax=10.0,
+            gain_slope=1.0,
+            gain_center=0.0,
+        )
+        h = np.zeros(5)
+        r0 = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]])
+
+        rr = model.run_1pop(0, h, r0, dt=0.5, nsteps=h.size)
+        expected = np.asarray(model.gain(1.5 * r0[:, 1:], 0), dtype=float).ravel()
+
+        assert_allclose(rr.values[0, 1:], expected, atol=1e-12)
+
+    def test_dynamic_r0_uses_first_column_for_default_s0(self):
+        W = np.array([[0.0, 1.6], [0.0, 0.0]])
+        model = RateModelWC(
+            W,
+            tau=np.array([[2.0], [1.5]]),
+            tau_syn=np.array([[0.0, 5.0], [0.0, 0.0]]),
+            rmax=10.0,
+            gain_slope=1.0,
+            gain_center=0.0,
+        )
+        h = float(model.gain_inv(4.0, 0) - W[0, 1] * 3.0)
+        r0 = np.array([
+            [4.0, 4.0, 4.0, 4.0],
+            [3.0, 3.0, 5.0, 5.0],
+        ])
+        s0 = np.zeros((2, 2))
+
+        rr_default = model.run_1pop(0, h, r0, dt=0.5, nsteps=r0.shape[1])
+        rr_shifted = model.run_1pop(0, h, r0, dt=0.5, nsteps=r0.shape[1], s0=s0)
+
+        assert_allclose(rr_default.values[0, :2], [4.0, 4.0], atol=1e-12)
+        self.assertLess(rr_shifted.values[0, 1], rr_default.values[0, 1])
+        self.assertGreater(rr_default.values[0, -1], rr_default.values[0, 1])
+
     def test_recurrent_zero_tau_block_raises(self):
         model = RateModelWC(
             np.array([[0.0, 1.0], [1.0, 0.0]]),

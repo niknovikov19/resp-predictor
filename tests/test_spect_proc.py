@@ -2,7 +2,13 @@ import unittest
 
 import numpy as np
 
-from spect_proc import itc, morlet_phase_local, morlet_power, morlet_power_local
+from spect_proc import (
+    itc,
+    morlet_phase_local,
+    morlet_power,
+    morlet_power_freqs,
+    morlet_power_local,
+)
 
 
 def _angle_diff(a, b):
@@ -176,6 +182,76 @@ class TestPhaseProc(unittest.TestCase):
         t_power, power_trace = morlet_power(x, t, f, n_cycles, overlap=1.0)
         idx = np.argmin(np.abs(t_power - t0))
         self.assertTrue(np.isnan(power_trace[idx]))
+
+    def test_range_power_matches_single_freq_when_fband_is_zero(self):
+        f = 8.0
+        n_cycles = 6
+        dt = 1e-3
+        t = np.arange(0.0, 3.0, dt)
+        x = np.cos(2.0 * np.pi * f * t + 0.37)
+
+        t_ref, power_ref = morlet_power(x, t, f, n_cycles, overlap=0.5)
+        t_power, ff, power = morlet_power_freqs(
+            x, t, f, 0.0, 0.5, n_cycles, overlap=0.5
+        )
+
+        np.testing.assert_allclose(t_power, t_ref)
+        np.testing.assert_allclose(ff, np.array([f]))
+        np.testing.assert_allclose(power[0], power_ref, equal_nan=True)
+
+    def test_range_power_returns_frequency_by_time_array(self):
+        f0 = 10.0
+        fband = 3.0
+        df = 1.0
+        n_cycles = 5
+        t = np.arange(0.0, 1.0, 1e-3)
+        x = np.cos(2.0 * np.pi * 9.0 * t)
+
+        t_power, ff, power = morlet_power_freqs(x, t, f0, fband, df, n_cycles)
+
+        self.assertEqual(t_power.ndim, 1)
+        self.assertEqual(ff.ndim, 1)
+        self.assertEqual(power.shape, (ff.size, t_power.size))
+        np.testing.assert_allclose(ff, np.arange(f0 - fband, f0 + fband + df, df))
+
+    def test_range_power_is_larger_near_injected_frequencies(self):
+        n_cycles = 6
+        dt = 1e-3
+        t = np.arange(0.0, 4.0, dt)
+        x = (
+            np.cos(2.0 * np.pi * 7.0 * t + 0.2)
+            + 0.8 * np.cos(2.0 * np.pi * 15.0 * t - 0.4)
+        )
+
+        _, ff, power = morlet_power_freqs(
+            x, t, 11.0, 5.0, 1.0, n_cycles, overlap=0.5, power_mode='amp2'
+        )
+        power_mean = np.nanmean(power, axis=1)
+        idx_7 = np.argmin(np.abs(ff - 7.0))
+        idx_11 = np.argmin(np.abs(ff - 11.0))
+        idx_15 = np.argmin(np.abs(ff - 15.0))
+
+        self.assertGreater(power_mean[idx_7], power_mean[idx_11])
+        self.assertGreater(power_mean[idx_15], power_mean[idx_11])
+
+    def test_range_power_returns_nan_over_fully_missing_region(self):
+        f0 = 10.0
+        fband = 2.0
+        df = 1.0
+        n_cycles = 5
+        dt = 1e-3
+        t = np.arange(0.0, 2.0, dt)
+        t0 = 0.8
+        x = np.cos(2.0 * np.pi * f0 * t)
+
+        sigma_t = n_cycles / (2.0 * np.pi * (f0 - fband))
+        x[np.abs(t - t0) <= 4.0 * sigma_t] = np.nan
+
+        t_power, _, power = morlet_power_freqs(
+            x, t, f0, fband, df, n_cycles, overlap=1.0
+        )
+        idx = np.argmin(np.abs(t_power - t0))
+        self.assertTrue(np.all(np.isnan(power[:, idx])))
 
     def test_power_renormalization_keeps_partial_nan_power_close(self):
         f = 12.0

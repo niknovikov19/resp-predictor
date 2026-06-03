@@ -332,23 +332,23 @@ def plot_pert_err(R, Rhat, Rhat0):
     plt.legend()
 
 
-#np.random.seed(111)
+if __name__ == '__main__':
+    #np.random.seed(111)
 
-# Model
-N = 5  # Number of populations
-W = 0.2 * np.random.randn(N, N)  # Weight matrix
-model = RateModelWC(W, tau=1, rmax=10, gain_slope=0.5, gain_center=0)
+    # Model
+    N = 5  # Number of populations
+    W = 0.2 * np.random.randn(N, N)  # Weight matrix
+    model = RateModelWC(W, tau=1, rmax=10, gain_slope=0.5, gain_center=0)
 
-# External input
-h0 = 1 * np.random.randn(N, 1)
+    # External input
+    h0 = 1 * np.random.randn(N, 1)
 
-n_trials = 1
-dh_vals_train = 10. ** np.linspace(-4, 0.5, 5)
-dh_vals_test = 10. ** np.linspace(-3.5, 1, 13)
+    n_trials = 1
+    dh_vals_train = 10. ** np.linspace(-4, 0.5, 5)
+    dh_vals_test = 10. ** np.linspace(-3.5, 1, 13)
 
-r0, R, Rhat, Rhat0 = pert_test(model, h0, dh_vals_train, 
-                               dh_vals_test, n_trials=n_trials)
-plot_pert_err(R, Rhat, Rhat0)
+    r0, R, Rhat, Rhat0 = pert_test(model, h0, dh_vals_train,
+                                   dh_vals_test, n_trials=n_trials)
+    plot_pert_err(R, Rhat, Rhat0)
 
-plt.show()
-
+    plt.show()

@@ -110,13 +110,53 @@ class RateModel(ABC):
             )
         return ds
 
+    def _expand_1pop_h(
+            self,
+            h: np.ndarray | float,
+            nsteps: int
+            ) -> np.ndarray:
+        h = np.asarray(h, dtype=float).reshape(-1)
+        if h.size == 1:
+            return np.full(nsteps, float(h[0]))
+        if h.size != nsteps:
+            raise ValueError(
+                "Time-varying input must have one sample or exactly nsteps samples."
+            )
+        return h.copy()
+
+    def _expand_1pop_r0(
+            self,
+            r0: np.ndarray,
+            nsteps: int
+            ) -> np.ndarray:
+        r0 = np.asarray(r0, dtype=float).reshape((self.npops, -1))
+        if r0.shape[1] not in (1, nsteps):
+            raise ValueError(
+                "Surrogate rates must have one column or exactly nsteps columns."
+            )
+        return r0
+
+    def _prepare_1pop_inputs(
+            self,
+            h: np.ndarray | float,
+            r0: np.ndarray,
+            nsteps: int
+            ) -> tuple[np.ndarray, np.ndarray]:
+        return self._expand_1pop_h(h, nsteps), self._expand_1pop_r0(r0, nsteps)
+
     def _surrogate_r_1pop(
             self,
             pop_num: int,
             r_pop: float,
-            r0: np.ndarray
+            r0: np.ndarray,
+            step_num: int | None = None
             ) -> np.ndarray:
-        r = np.asarray(r0).reshape((self.npops, 1)).copy()
+        r0 = np.asarray(r0, dtype=float).reshape((self.npops, -1))
+        if r0.shape[1] > 1:
+            if step_num is None:
+                raise ValueError("Time-varying surrogate rates require step_num.")
+            return r0[:, [step_num]]
+        r = r0[:, [0]].copy()
         r[pop_num, 0] = float(r_pop)
         return r
 
@@ -126,9 +166,10 @@ class RateModel(ABC):
             r_pop: float,
             r0: np.ndarray,
             h: float,
-            s_row: np.ndarray
+            s_row: np.ndarray,
+            step_num: int | None = None
             ) -> float:
-        r = self._surrogate_r_1pop(pop_num, r_pop, r0)
+        r = self._surrogate_r_1pop(pop_num, r_pop, r0, step_num)
         mu = float(h + s_row.sum())
         is_inst = (self.tau_syn[pop_num, :] == 0)
         if np.any(is_inst):
@@ -140,12 +181,13 @@ class RateModel(ABC):
             pop_num: int,
             s_row: np.ndarray,
             r_pop: float,
-            r0: np.ndarray
+            r0: np.ndarray,
+            step_num: int | None = None
             ) -> np.ndarray:
         ds = np.zeros_like(s_row)
         is_dyn = self.tau_syn[pop_num, :] > 0
         if np.any(is_dyn):
-            r = self._surrogate_r_1pop(pop_num, r_pop, r0)
+            r = self._surrogate_r_1pop(pop_num, r_pop, r0, step_num)
             s_hat = self._syn_target(r)[pop_num, :]
             ds[is_dyn] = (
                 (s_hat[is_dyn] - s_row[is_dyn])
@@ -160,40 +202,41 @@ class RateModel(ABC):
             r0: np.ndarray,
             h: float,
             s: np.ndarray,
-            dt: float
+            dt: float,
+            step_num: int | None = None
             ) -> tuple[float, np.ndarray]:
         zero_tau = (self.tau[pop_num, 0] == 0)
 
         # Match the full runner for rows with stored synapses
         if zero_tau:
             r_inst = float(self.gain(
-                self._calc_mu_1pop(pop_num, r, r0, h, s), pop_num
+                self._calc_mu_1pop(pop_num, r, r0, h, s, step_num), pop_num
             ))
         else:
             r_inst = float(r)
         r_hat = float(self.gain(
-            self._calc_mu_1pop(pop_num, r_inst, r0, h, s), pop_num
+            self._calc_mu_1pop(pop_num, r_inst, r0, h, s, step_num), pop_num
         ))
         dr = 0.0 if zero_tau else (r_hat - r) / self.tau[pop_num, 0]
-        ds = self._dsdt_row(pop_num, s, r_inst, r0)
+        ds = self._dsdt_row(pop_num, s, r_inst, r0, step_num)
 
         r_mid = float(r if zero_tau else r + 0.5 * dt * dr)
         s_mid = s + 0.5 * dt * ds
         if zero_tau:
             r_mid = float(self.gain(
-                self._calc_mu_1pop(pop_num, r_mid, r0, h, s_mid), pop_num
+                self._calc_mu_1pop(pop_num, r_mid, r0, h, s_mid, step_num), pop_num
             ))
         r_hat_mid = float(self.gain(
-            self._calc_mu_1pop(pop_num, r_mid, r0, h, s_mid), pop_num
+            self._calc_mu_1pop(pop_num, r_mid, r0, h, s_mid, step_num), pop_num
         ))
         dr_mid = 0.0 if zero_tau else (r_hat_mid - r_mid) / self.tau[pop_num, 0]
-        ds_mid = self._dsdt_row(pop_num, s_mid, r_mid, r0)
+        ds_mid = self._dsdt_row(pop_num, s_mid, r_mid, r0, step_num)
 
         r_new = float(r if zero_tau else r + dt * dr_mid)
         s_new = s + dt * ds_mid
         if zero_tau:
             r_new = float(self.gain(
-                self._calc_mu_1pop(pop_num, r_new, r0, h, s_new), pop_num
+                self._calc_mu_1pop(pop_num, r_new, r0, h, s_new, step_num), pop_num
             ))
         return r_new, s_new
 
@@ -266,6 +309,9 @@ class RateModel(ABC):
              ) -> np.ndarray | float:
         """Derivative of the gain function with respect to mu."""
         pass
+
+    def h0_by_r0(self, r0):
+        return self.gain_inv(r0) - self.W @ r0
 
     def _run_full(self,
             h: np.ndarray,   # input: (npops, 1 | nsteps)
@@ -420,48 +466,85 @@ class RateModel(ABC):
             nsteps: int = 10,
             s0: np.ndarray | None = None
             ) -> xr.DataArray:   # (1, nsteps)
-        
-        # The result will be stored here
-        R = np.zeros(nsteps)
-
-        # Time bins
-        tvec = np.arange(0, nsteps * dt, dt)
-
-        # To column vector
-        r0 = r0.reshape((self.npops, 1))
-
-        # Initial state
-        R[0] = float(r0[pop_num, 0])
-
+        h_trace, r0 = self._prepare_1pop_inputs(h, r0, nsteps)
+        is_r0_static = (r0.shape[1] == 1)
         is_dyn = self.tau_syn[pop_num, :] > 0
-        if self.tau[pop_num, 0] == 0 and self.tau_syn[pop_num, pop_num] == 0 and self.W[pop_num, pop_num] != 0:
-            raise ValueError(
-                "Instantaneous self-coupling with tau=0 is not supported."
-            )
 
-        # Keep the old path when this row has no stored synapses
-        if not np.any(is_dyn):
+        # Keep the old path for static surrogate inputs
+        if is_r0_static:
+
+            # The result will be stored here
+            R = np.zeros(nsteps)
+
+            # Time bins
+            tvec = np.arange(0, nsteps * dt, dt)
+
+            # Initial state
+            R[0] = float(r0[pop_num, 0])
+            h0 = float(h_trace[0])
+
+            if self.tau[pop_num, 0] == 0 and self.tau_syn[pop_num, pop_num] == 0 and self.W[pop_num, pop_num] != 0:
+                raise ValueError(
+                    "Instantaneous self-coupling with tau=0 is not supported."
+                )
+
+            # Keep the old path when this row has no stored synapses
+            if not np.any(is_dyn):
+                for n in range(1, nsteps):
+                    r = R[n - 1]
+                    h_n = float(h_trace[n])
+                    mu = h_n + self.W[pop_num, :] @ r0[:, 0]
+                    r_hat = self.gain(mu, pop_num)
+                    if self.tau[pop_num, 0] == 0:
+                        R[n] = r_hat
+                    else:
+                        R[n] = r + (r_hat - r) * dt / self.tau[pop_num, 0]
+                return xr.DataArray(
+                    R.reshape((1, -1)),
+                    dims=['pop', 'time'],
+                    coords={'pop': [pop_num], 'time': tvec},
+                )
+
+            # Initialize the stored synapses for the dynamic row
+            s = self._init_syn_row(pop_num, r0, s0)
+            r = float(r0[pop_num, 0])
             for n in range(1, nsteps):
-                r = R[n - 1]
-                mu = h + self.W[pop_num, :] @ r0[:, 0]
-                r_hat = self.gain(mu, pop_num)
-                if self.tau[pop_num, 0] == 0:
-                    R[n] = r_hat
-                else:
-                    R[n] = r + (r_hat - r) * dt / self.tau[pop_num, 0]
+                h_n = float(h_trace[n])
+                r, s = self._step_1pop_dynamic(pop_num, r, r0, h_n, s, dt)
+                R[n] = r
+
             return xr.DataArray(
                 R.reshape((1, -1)),
                 dims=['pop', 'time'],
                 coords={'pop': [pop_num], 'time': tvec},
             )
 
-        # Initialize the stored synapses for the dynamic row
-        s = self._init_syn_row(pop_num, r0, s0)
-        r = float(r0[pop_num, 0])
+        # The result will be stored here
+        R = np.zeros(nsteps)
+
+        # Time bins
+        tvec = np.arange(0, nsteps * dt, dt)
+
+        # Initial state
+        R[0] = float(r0[pop_num, 0])
+        s = self._init_syn_row(pop_num, r0[:, [0]], s0)
+        r = float(R[0])
+
         for n in range(1, nsteps):
-            r, s = self._step_1pop_dynamic(pop_num, r, r0, h, s, dt)
+            h_n = float(h_trace[n])
+            if np.any(is_dyn):
+                r, s = self._step_1pop_dynamic(
+                    pop_num, r, r0, h_n, s, dt, step_num=n
+                )
+            else:
+                mu = self._calc_mu_1pop(pop_num, r, r0, h_n, s, step_num=n)
+                r_hat = float(self.gain(mu, pop_num))
+                if self.tau[pop_num, 0] == 0:
+                    r = r_hat
+                else:
+                    r = r + (r_hat - r) * dt / self.tau[pop_num, 0]
             R[n] = r
-        
+
         # Convert the result to xarray
         R = xr.DataArray(
             R.reshape((1, -1)),
@@ -479,22 +562,39 @@ class RateModel(ABC):
             nsteps: int = 10,
             s0: np.ndarray | None = None
             ) -> float:
+        h_trace, r0 = self._prepare_1pop_inputs(h, r0, nsteps)
+        is_r0_static = (r0.shape[1] == 1)
+
         # Return steady-state
-        r0 = r0.reshape((self.npops, 1))
-        if self.tau[pop_num, 0] == 0 and self.tau_syn[pop_num, pop_num] == 0 and self.W[pop_num, pop_num] != 0:
-            raise ValueError(
-                "Instantaneous self-coupling with tau=0 is not supported."
-            )
-        if np.all(self.tau_syn[pop_num, :] == 0):
-            r_hat = self.gain(
-                float(self.W[pop_num, :] @ r0[:, 0] + h), pop_num)
-            return r_hat
+        if is_r0_static:
+            if self.tau[pop_num, 0] == 0 and self.tau_syn[pop_num, pop_num] == 0 and self.W[pop_num, pop_num] != 0:
+                raise ValueError(
+                    "Instantaneous self-coupling with tau=0 is not supported."
+                )
+            if np.all(self.tau_syn[pop_num, :] == 0) and np.all(h_trace == h_trace[0]):
+                r_hat = self.gain(
+                    float(self.W[pop_num, :] @ r0[:, 0] + h_trace[0]), pop_num)
+                return r_hat
 
         r = float(r0[pop_num, 0])
-        s = self._init_syn_row(pop_num, r0, s0)
+        s = self._init_syn_row(pop_num, r0[:, [0]], s0)
+        is_dyn = self.tau_syn[pop_num, :] > 0
 
         for n in range(1, nsteps):
-            r, s = self._step_1pop_dynamic(pop_num, r, r0, h, s, dt)
+            h_n = float(h_trace[n])
+            if np.any(is_dyn):
+                step_num = None if is_r0_static else n
+                r, s = self._step_1pop_dynamic(
+                    pop_num, r, r0, h_n, s, dt, step_num=step_num
+                )
+            else:
+                step_num = None if is_r0_static else n
+                mu = self._calc_mu_1pop(pop_num, r, r0, h_n, s, step_num=step_num)
+                r_hat = float(self.gain(mu, pop_num))
+                if self.tau[pop_num, 0] == 0:
+                    r = r_hat
+                else:
+                    r = r + (r_hat - r) * dt / self.tau[pop_num, 0]
         return r
     
     def run_1pop(
@@ -514,112 +614,3 @@ class RateModel(ABC):
         else:
             raise ValueError(f"Unknown simulation result type: {self.sim_res_type}")
         
-
-class RateModelWC(RateModel):
-
-    rmax: np.ndarray   # (npops, 1)
-    gain_slope: np.ndarray   # (npops, 1)
-    gain_center: np.ndarray   # (npops, 1)
-    
-    def __init__(
-            self,
-            W: np.ndarray,
-            tau: np.ndarray | float,
-            rmax: np.ndarray | float,
-            gain_slope: np.ndarray | float,
-            gain_center: np.ndarray | float,
-            tau_syn: np.ndarray | float = 0.0
-            ):
-        super().__init__(W, tau, tau_syn)
-        self.rmax = _to_array(rmax, (self.npops, 1))
-        self.gain_slope = _to_array(gain_slope, (self.npops, 1))
-        self.gain_center = _to_array(gain_center, (self.npops, 1))
-
-    def gain(self,
-             mu: np.ndarray | float,   # (npops x nsamples) or (1 x nsamples)
-             pop_num: int | None = None
-             ) -> np.ndarray | float:
-        rmax, k, c  = self.rmax, self.gain_slope, self.gain_center
-        if pop_num is None:
-            mu = mu.reshape((self.npops, -1))
-            return rmax / (1 + np.exp(-k * (mu - c)))
-        else:
-            if not np.isscalar(mu):
-                mu = mu.reshape((1, -1))
-            rmax, k, c = rmax[pop_num, 0], k[pop_num, 0], c[pop_num, 0]
-            return rmax / (1 + np.exp(-k * (mu - c)))
-    
-    def gain_inv(self,
-             r: np.ndarray | float,
-             pop_num: int | None = None,
-             eps: float = 1e-9
-             ) -> np.ndarray | float:        
-        rmax, k, c = self.rmax, self.gain_slope, self.gain_center
-        if pop_num is None:
-            r = np.array(r).reshape((self.npops, -1))
-            r = np.clip(r, eps, rmax - eps)
-            return c + (1.0 / k) * np.log(r / (rmax - r))
-        else:
-            if not np.isscalar(r):
-                r = np.array(r).reshape((1, -1))
-            rmax, k, c = rmax[pop_num, 0], k[pop_num, 0], c[pop_num, 0]
-            r = np.clip(r, eps, rmax - eps)
-            return c + (1.0 / k) * np.log(r / (rmax - r))
-
-    def gain_deriv(self,
-             r: np.ndarray | float,
-             pop_num: int | None = None
-             ) -> np.ndarray | float:
-        rmax, k = self.rmax, self.gain_slope
-        if pop_num is None:
-            r = np.array(r).reshape((self.npops, -1))
-            return k * r * (1 - r / rmax)
-        else:
-            if not np.isscalar(r):
-                r = np.array(r).reshape((1, -1))
-            rmax, k = rmax[pop_num, 0], k[pop_num, 0]
-            return k * r * (1 - r / rmax)
-
-    @classmethod
-    def from_steady_state(cls,
-            r0: np.ndarray | float,
-            tau: np.ndarray | float,
-            rmax: np.ndarray | float,
-            gain_slope: np.ndarray | float,
-            gain_center: np.ndarray | float,
-            R: float,
-            J0: float = -1.0,
-            tau_syn: np.ndarray | float = 0.0
-            ) -> tuple['RateModelWC', np.ndarray, np.ndarray]:
-        """Build a Wilson-Cowan model with a prescribed steady state.
-
-        The Jacobian is sampled as in ``ctrl_test.ipynb``:
-        ``J = random_W_real(N, R) + J0 * I``.
-        The returned tuple contains ``(model, h0, J)``, where ``h0`` is the
-        constant input that makes ``r0`` a fixed point of the returned model.
-        """
-        r0 = np.asarray(r0).reshape((-1, 1))
-        npops = r0.shape[0]
-
-        model = cls(
-            np.zeros((npops, npops)),
-            tau=tau,
-            tau_syn=tau_syn,
-            rmax=rmax,
-            gain_slope=gain_slope,
-            gain_center=gain_center
-        )
-
-        gp = model.gain_deriv(r0)
-        if np.any(np.isclose(gp, 0.0)):
-            raise ValueError(
-                "Target steady-state rates must give nonzero gain derivatives."
-            )
-
-        Ginv = np.diag(1.0 / gp.ravel())
-        J = random_W_real(npops, R=R) + J0 * np.eye(npops)
-        W = Ginv @ (np.eye(npops) + model.tau * J)
-        h0 = model.gain_inv(r0) - W @ r0
-
-        model.W = W
-        return model, h0, J

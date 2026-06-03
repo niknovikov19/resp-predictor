@@ -1,0 +1,69 @@
+{
+  "action_flags": {
+    "itc": 1,
+    "itc_wvar": 0,
+    "phase_distr": 1,
+    "pow_fband": 1,
+    "pow_wvar": 0,
+    "signals": 1
+  },
+  "derived_signals": {
+    "enabled": 0,
+    "subtract_r0_before_combine": 1,
+    "use_specs": [
+      "np_minus_p"
+    ]
+  },
+  "phaseproc": {
+    "drop_win": 0.01,
+    "drop_win_sweep": [
+      0.0,
+      0.002,
+      0.004,
+      0.006,
+      0.008,
+      0.01,
+      0.015,
+      0.02
+    ],
+    "exclude_edges": true,
+    "f": 10,
+    "fit_intercept": true,
+    "method": "fit",
+    "min_valid_mass_frac": 0.0,
+    "n_cycles": 5,
+    "phase_distr_bins": 64,
+    "phase_distr_smooth_sigma": 1.0,
+    "phase_distr_xlim": [
+      -6.283185307179586,
+      6.283185307179586
+    ],
+    "phase_progression_plot": "wrapped_strip",
+    "pop": 0,
+    "power_df": 0.5,
+    "power_fband": 5.0,
+    "power_overlap": 0.9,
+    "rcond": null,
+    "signal": "raw"
+  },
+  "sigproc": {
+    "analysis_t_win": [
+      5,
+      15
+    ],
+    "bp_f": [
+      5.0,
+      20.0
+    ],
+    "bp_order": 4,
+    "epoch_plot_subtract_r0": 1,
+    "epoch_t_win": [
+      -0.05,
+      0.05
+    ],
+    "raw_zoom_t_win": [
+      10,
+      15
+    ]
+  }
+}
