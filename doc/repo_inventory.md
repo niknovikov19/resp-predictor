@@ -1,6 +1,6 @@
 # Repository inventory
 
-This repository explores how to estimate the input–output response of neural population models from simulations. [Project description](../experiments/resp_static/description.md) · [File move log](repo_moves.md)
+This repository explores how to estimate the input–output response of neural population models from simulations. [Static response methods](../experiments/resp_static/doc/method_desc.md) · [File move log](repo_moves.md)
 
 ## Root directories
 
@@ -14,6 +14,7 @@ This repository explores how to estimate the input–output response of neural p
 | `rate_model/` | Base, linear, kernel, and Wilson–Cowan rate models, plus shared model and eigenmode helpers. |
 | `tests/` | Tests for rate models, spectral processing, transfer matrices, and experiment utilities. |
 | `transfer_mat/` | Transfer-matrix estimation code. |
+| `utils/` | Shared numerical utilities. |
 
 ## Experiment topics
 
@@ -34,11 +35,11 @@ This repository explores how to estimate the input–output response of neural p
 | --- | --- |
 | [`rate_model/eig_utils.py`](../rate_model/eig_utils.py) | Eigenvalue sampling and real random matrix construction. |
 | [`rate_model/model_utils.py`](../rate_model/model_utils.py) | Shared model construction and experiment helpers. |
-| [`experiments/resp_static/rank1_hess.py`](../experiments/resp_static/rank1_hess.py) | Rank-one Hessian estimation. |
+| [`utils/rank1_hess.py`](../utils/rank1_hess.py) | Rank-one Hessian estimation. |
 | [`rate_model/rate_model_eig.py`](../rate_model/rate_model_eig.py) | Two-population excitatory–inhibitory model construction from eigenmode parameters. |
-| [`experiments/resp_static/resp_pred.py`](../experiments/resp_static/resp_pred.py) | Steady-state calculations, perturbation matrices, and response prediction experiments. |
-| [`experiments/resp_static/resp_predictor.py`](../experiments/resp_static/resp_predictor.py) | `ResponsePredictor` and tools for evaluating perturbation predictions. |
-| [`experiments/resp_static/resp_predictor_2.py`](../experiments/resp_static/resp_predictor_2.py) | `ResponsePredictor_2` implementation. |
+| [`experiments/resp_static/standalone/sweep_lin_eps.py`](../experiments/resp_static/standalone/sweep_lin_eps.py) | Steady-state calculations, perturbation matrices, and response prediction experiments. |
+| [`experiments/resp_static/predictors/resp_pred_lin_multi_eps.py`](../experiments/resp_static/predictors/resp_pred_lin_multi_eps.py) | `ResponsePredictor` and tools for evaluating perturbation predictions. |
+| [`experiments/resp_static/predictors/resp_pred_ord2.py`](../experiments/resp_static/predictors/resp_pred_ord2.py) | `ResponsePredictor_2` implementation. |
 | [`experiments/phase_lock/spect_proc.py`](../experiments/phase_lock/spect_proc.py) | Morlet and sinusoid-fit methods for phase, power, and inter-trial coherence. |
 | [`_legacy/wc.py`](../_legacy/wc.py) | Standalone two-population Wilson–Cowan simulation. |
 

@@ -12,8 +12,8 @@ if 'tqdm' not in sys.modules:
     tqdm_mod.tqdm = lambda iterable, total=None: iterable
     sys.modules['tqdm'] = tqdm_mod
 
-from experiments.resp_static.resp_predictor import ResponsePredictor
-from experiments.resp_static.resp_predictor_2 import ResponsePredictor_2
+from experiments.resp_static.predictors.resp_pred_lin_multi_eps import ResponsePredictor
+from experiments.resp_static.predictors.resp_pred_ord2 import ResponsePredictor_2
 
 
 class TestRateModelKernel(unittest.TestCase):

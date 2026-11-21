@@ -3,7 +3,7 @@ from pathlib import Path
 
 # Add the repo root for direct script runs
 if __package__ in (None, ''):
-    sys.path.append(str(Path(__file__).resolve().parents[2]))
+    sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 import matplotlib.pyplot as plt
 import numpy as np

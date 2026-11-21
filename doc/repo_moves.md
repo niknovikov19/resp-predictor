@@ -51,3 +51,16 @@ The controller was already grouped in `rate_controller/` in the working tree. In
 | `wc.py` | `_legacy/wc.py` |
 
 `rate_model/`, `transfer_mat/`, `io_fit/`, and `tests/` stay at the root.
+
+## Organize static response experiments
+
+| Previous path | Path after this pass |
+| --- | --- |
+| `experiments/resp_static/description.md` | `experiments/resp_static/doc/description.md` |
+| `experiments/resp_static/description.ipynb` | `experiments/resp_static/standalone/wc_lin_resp_walkthrough.ipynb` |
+| `experiments/resp_static/resp_pred.py` | `experiments/resp_static/standalone/sweep_lin_eps.py` |
+| `experiments/resp_static/resp_predictor.py` | `experiments/resp_static/predictors/resp_pred_lin_multi_eps.py` |
+| `experiments/resp_static/resp_predictor_2.py` | `experiments/resp_static/predictors/resp_pred_ord2.py` |
+| `experiments/resp_static/resp_pred_test_1.ipynb` | `experiments/resp_static/resp_pred_ord2_demo.ipynb` |
+| `experiments/resp_static/rank1_hess.py` | `utils/rank1_hess.py` |
+| `experiments/resp_static/doc/description.md` | `experiments/resp_static/doc/method_desc.md` |

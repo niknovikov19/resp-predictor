@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from rate_model import RateModel, RateModelWC
 
-from .rank1_hess import estimate_rank1_hessian
+from utils.rank1_hess import estimate_rank1_hessian
 
 
 class ResponsePredictor_2:
