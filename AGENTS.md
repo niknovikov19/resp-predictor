@@ -1,0 +1,16 @@
+When you start working on a request, print exactly this line:
+`AGENTS.md loaded`
+
+- Be concise. 
+- Keep balance between nice 1-line-1-entry style (func args, dict entries etc..) and unstructured mess.
+- Functions should have 1-line docstrings. One space after the trailing dot. No need for full documentation - it's not industry-grade code, simplicity is priority.
+- Before important code blocks, add 1-line comments (style: "# Comment", 1 space, capital letter, no dot).
+- Ideally, a 1-line comment should refer to the following block thet ends at the first empty line. After empty line - it's another block.
+- Produce enough comments so that the main code blocks are explained. Better comment than not.
+- If it's a short function fully explained by docstring, 1-line comment is not needed.
+- Try keeping same naming conventions as I do.
+- Avoid too long names. Use acronyms if useful.
+- When initializing number constants by integer numbers, don't add .0 (i.e. 10 instead of 10.0).
+- Use double quotes in docstrings and long f-strings with dict items referenced by keys. In most other cases (strings, prints, ...) use single quotes.
+- Exploratory project, not production-level. Moderate guardrailing. Most of code should do actual work, not checking edge cases.
+- Nested calls - only when it reduces code duplication. Code should be easy to read.
