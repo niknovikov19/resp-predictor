@@ -7,11 +7,11 @@ from unittest.mock import patch
 import numpy as np
 import xarray as xr
 
-from dev_scratch.model_utils import (
+from rate_model.model_utils import (
     make_W_h0_ei_2d_syn,
     rate_phi_bounds,
 )
-from dev_scratch.phi_ie_max_maps import (
+from experiments.ei_modes.phi_ie_max_maps import (
     DEFAULT_RANGES,
     compute_phi_ie_bounds,
     main,
@@ -136,7 +136,7 @@ class TestPhiIeMaxMaps(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir) / 'phi_ie_max_maps'
             with patch(
-                'dev_scratch.phi_ie_max_maps.DEFAULT_ARTIFACT_DIR',
+                'experiments.ei_modes.phi_ie_max_maps.DEFAULT_ARTIFACT_DIR',
                 output_dir,
             ):
                 main()

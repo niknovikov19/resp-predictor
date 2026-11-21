@@ -1,6 +1,6 @@
 import numpy as np
 from rate_model import RateModelWC
-from dev_scratch.model_utils import make_W_h0_ei_2d
+from rate_model.model_utils import make_W_h0_ei_2d
 
 
 def main():

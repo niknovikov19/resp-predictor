@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spect_proc import (
+from experiments.phase_lock.spect_proc import (
     itc,
     morlet_phase_local,
     morlet_power,

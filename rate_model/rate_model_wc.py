@@ -1,7 +1,7 @@
 import numpy as np
 #import xarray as xr
 
-from eig_utils import random_W_real
+from .eig_utils import random_W_real
 from .rate_model_base import RateModel, _to_array
 
 
@@ -83,7 +83,7 @@ class RateModelWC(RateModel):
             ) -> tuple['RateModelWC', np.ndarray, np.ndarray]:
         """Build a Wilson-Cowan model with a prescribed steady state.
 
-        The Jacobian is sampled as in ``ctrl_test.ipynb``:
+        The Jacobian is sampled as in ``experiments/rate_ctrl/ctrl_test.ipynb``:
         ``J = random_W_real(N, R) + J0 * I``.
         The returned tuple contains ``(model, h0, J)``, where ``h0`` is the
         constant input that makes ``r0`` a fixed point of the returned model.

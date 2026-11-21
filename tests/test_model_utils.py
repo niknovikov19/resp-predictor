@@ -7,7 +7,7 @@ os.environ.setdefault('MPLBACKEND', 'Agg')
 import numpy as np
 from numpy.testing import assert_allclose
 
-from dev_scratch.model_utils import (
+from rate_model.model_utils import (
     _build_W_h0_ei_2d_syn_from_eig_qphi,
     main_ei,
     main_rand,

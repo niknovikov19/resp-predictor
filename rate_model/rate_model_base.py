@@ -4,7 +4,7 @@ from typing import Callable, Literal
 import numpy as np
 import xarray as xr
 
-from eig_utils import random_W_real
+from .eig_utils import random_W_real
 
 
 def _to_array(x, shape):
@@ -613,4 +613,3 @@ class RateModel(ABC):
             return self._run_1pop(pop_num, h, r0, dt, nsteps, s0)
         else:
             raise ValueError(f"Unknown simulation result type: {self.sim_res_type}")
-        

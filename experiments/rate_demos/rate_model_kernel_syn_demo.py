@@ -11,9 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 if __package__ in (None, ''):
-    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from rate_model_kernel import RateModelKernel
+from rate_model import RateModelKernel
 
 ARTIFACT_DIR = Path(__file__).resolve().parent / 'artifacts' / 'rate_model_ker'
 ARTIFACT_PATH = ARTIFACT_DIR / 'rate_model_kernel_syn_demo.png'

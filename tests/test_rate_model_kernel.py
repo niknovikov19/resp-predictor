@@ -5,15 +5,15 @@ import types
 import numpy as np
 from numpy.testing import assert_allclose
 
-from rate_model_kernel import RateModelKernel
+from rate_model import RateModelKernel
 
 if 'tqdm' not in sys.modules:
     tqdm_mod = types.ModuleType('tqdm')
     tqdm_mod.tqdm = lambda iterable, total=None: iterable
     sys.modules['tqdm'] = tqdm_mod
 
-from resp_predictor import ResponsePredictor
-from resp_predictor_2 import ResponsePredictor_2
+from experiments.resp_static.resp_predictor import ResponsePredictor
+from experiments.resp_static.resp_predictor_2 import ResponsePredictor_2
 
 
 class TestRateModelKernel(unittest.TestCase):

@@ -3,7 +3,7 @@ from typing import Callable
 import numpy as np
 import xarray as xr
 
-from eig_utils import random_W_real
+from .eig_utils import random_W_real
 from .rate_model_base import RateModel, _to_array
 
 

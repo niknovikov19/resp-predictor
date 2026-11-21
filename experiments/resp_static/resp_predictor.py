@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+# Add the repo root for direct script runs
+if __package__ in (None, ''):
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd

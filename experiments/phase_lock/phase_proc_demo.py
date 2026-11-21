@@ -11,10 +11,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 if __package__ in (None, ""):
-    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from spect_proc import itc, morlet_phase_local, morlet_power_local
-from spect_proc import morlet_power
+from experiments.phase_lock.spect_proc import (
+    itc, morlet_phase_local, morlet_power, morlet_power_local,
+)
 
 
 ARTIFACT_DIR = Path(__file__).resolve().parent / "artifacts" / Path(__file__).stem

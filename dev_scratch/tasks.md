@@ -44,8 +44,8 @@ Produce a json file with all info (including model params and ranges) with the s
 
 3. Test the result of make_W_h0_ei_2d_syn() with explicit noise-free simulation.
 
-Import make_W_h0_ei_2d_syn() from dev_scratch/model_utils.py.
-Use main_ei() from dev_scratch/model_utils.py as a reference. 
+Import make_W_h0_ei_2d_syn() from rate_model/model_utils.py.
+Use main_ei() from rate_model/model_utils.py as a reference.
 
 Create a function in a new py-file in dev_scratch.
 

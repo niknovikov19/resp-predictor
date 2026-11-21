@@ -5,7 +5,7 @@ import copy
 from pathlib import Path
 import sys
 
-DIRPATH_REPO = Path(__file__).parents[1]
+DIRPATH_REPO = Path(__file__).resolve().parents[2]
 sys.path.append(str(DIRPATH_REPO))
 os.environ.setdefault('MPLCONFIGDIR', '.matplotlib')
 
@@ -18,7 +18,7 @@ from numpy import real, imag, abs, pi, sin, cos
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import butter, sosfiltfilt
 
-from spect_proc import (
+from experiments.phase_lock.spect_proc import (
     itc,
     morlet_power,
     morlet_power_freqs,
@@ -27,7 +27,7 @@ from spect_proc import (
     sinusoid_fit_power_freqs,
 )
 from rate_model import RateModelWC
-from rate_model_eig import (
+from rate_model.rate_model_eig import (
     rate_qphi_to_eig_qphi,
     make_W_h0_ei_2d_syn,
     make_eigmode_start_ei_2d_syn

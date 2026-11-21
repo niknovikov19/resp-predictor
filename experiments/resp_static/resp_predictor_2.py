@@ -5,8 +5,9 @@ import xarray as xr
 
 from tqdm import tqdm
 
-from rank1_hess import estimate_rank1_hessian
 from rate_model import RateModel, RateModelWC
+
+from .rank1_hess import estimate_rank1_hessian
 
 
 class ResponsePredictor_2:

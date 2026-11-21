@@ -1,9 +1,9 @@
-import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
-DIRPATH_REPO = Path(__file__).parents[1]
-sys.path.append(str(DIRPATH_REPO))
+# Add the repo root for direct script runs
+if __package__ in (None, ''):
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +11,7 @@ from numpy import real, imag, abs, pi, sin, cos
 from scipy.signal import butter, sosfiltfilt
 
 from rate_model import RateModelWC
-from rate_model_eig import (
+from rate_model.rate_model_eig import (
     make_W_h0_ei_2d,
     rate_qphi_to_eig_qphi,
     rate_phi_bounds,

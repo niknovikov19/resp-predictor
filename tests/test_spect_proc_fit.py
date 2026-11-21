@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-import spect_proc as FIT
+from experiments.phase_lock import spect_proc as FIT
 
 
 def _angle_diff(a, b):

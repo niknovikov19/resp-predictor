@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-DIRPATH_REPO = Path(__file__).resolve().parents[1]
+DIRPATH_REPO = Path(__file__).resolve().parents[2]
 sys.path.append(str(DIRPATH_REPO))
 print(DIRPATH_REPO)
 

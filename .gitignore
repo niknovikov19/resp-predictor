@@ -2,5 +2,8 @@
 *.vscode
 *.npz
 _old
-dev_scratch/artifacts/**/*.png
+experiments/ei_modes/artifacts/**/*.png
+!experiments/ei_modes/artifacts/phi_ie_max_maps/phi_maps_r0_5_5_f_10_dim_2_15_15_3_659076a4.png
+experiments/phase_lock/artifacts/**/*.png
+experiments/rate_demos/artifacts/**/*.png
 .mplconfig

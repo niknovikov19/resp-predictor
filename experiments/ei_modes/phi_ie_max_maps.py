@@ -14,9 +14,9 @@ import numpy as np
 import xarray as xr
 
 if __package__ in (None, ''):
-    sys.path.append(str(Path(__file__).resolve().parent.parent))
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from dev_scratch.model_utils import (
+from rate_model.model_utils import (
     rate_phi_bounds,
     make_W_h0_ei_2d_syn,
 )
